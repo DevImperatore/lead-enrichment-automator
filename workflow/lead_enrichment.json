@@ -1,0 +1,176 @@
+{
+  "name": "Lead Enrichment Automator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1b9a1240-5a3b-4171-a477-96a1a1e0b001",
+      "name": "Webhook Intake",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "lead-intake"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-1",
+              "name": "name",
+              "value": "={{ $json.body?.name || $json.name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-2",
+              "name": "company",
+              "value": "={{ $json.body?.company || $json.company || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-3",
+              "name": "email",
+              "value": "={{ $json.body?.email || $json.email || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "field-4",
+              "name": "source",
+              "value": "={{ $json.body?.source || $json.source || 'website' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2c8b2351-6b4c-4282-b588-07b2b2f1c002",
+      "name": "Map Lead Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/enrich",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { name: $json.name, company: $json.company, email: $json.email, source: $json.source } }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "3d7c3462-7c5d-4393-c699-18c3c3a2d003",
+      "name": "Call Python Enrichment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "resource": "draft",
+        "subject": "={{ $json.email_draft.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.email_draft.body }}",
+        "options": {
+          "sendTo": "={{ $json.lead.email }}"
+        }
+      },
+      "id": "4e6d4573-8d6e-44a4-d7aa-29d4d4b3e004",
+      "name": "Create Gmail Draft (Optional)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        900,
+        180
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "5f5e5684-9e7f-45b5-e8bb-3ae5e5c4f005",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        380
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Intake": {
+      "main": [
+        [
+          {
+            "node": "Map Lead Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Lead Fields": {
+      "main": [
+        [
+          {
+            "node": "Call Python Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Python Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Create Gmail Draft (Optional)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Gmail Draft (Optional)": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "1",
+  "meta": {
+    "instanceId": "lead-enrichment-instance-01"
+  },
+  "tags": []
+}
